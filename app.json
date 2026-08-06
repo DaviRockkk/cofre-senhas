@@ -19,7 +19,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B0F19"
-      }
+      },
+      "package": "com.davirockkk.null"
     },
     "web": {
       "favicon": "./assets/favicon.png"
