@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Null",
+    "name": "Cofre de Senhas",
     "slug": "null",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,13 +20,23 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#0B0F19"
       },
-      "package": "com.davirockkk.null"
+      "package": "com.davirockkk.cofresenhas",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/bdc1f50f-3b62-4eb8-abb7-9d5ea792bc6c"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     },
     "extra": {
       "eas": {
@@ -40,6 +50,7 @@
           "faceIDPermission": "Permitir biometria para acessar seu cofre de senhas com segurança."
         }
       ]
-    ]
+    ],
+    "owner": "davirockkk"
   }
 }
