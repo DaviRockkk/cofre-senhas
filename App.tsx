@@ -3,9 +3,10 @@ import { View, ActivityIndicator, StyleSheet, StatusBar, Text } from 'react-nati
 import { Shield } from 'lucide-react-native';
 import { VaultProvider, useVault } from './src/context/VaultContext';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { LockScreen } from './src/screens/LockScreen';
 
 const VaultMainNavigator: React.FC = () => {
-  const { isLoading } = useVault();
+  const { isLoading, isLocked, unlockAppWithBiometrics, biometricLabel } = useVault();
 
   if (isLoading) {
     return (
@@ -17,6 +18,15 @@ const VaultMainNavigator: React.FC = () => {
         <ActivityIndicator size="large" color="#06B6D4" style={{ marginTop: 20 }} />
         <Text style={styles.loadingText}>Carregando Null...</Text>
       </View>
+    );
+  }
+
+  if (isLocked) {
+    return (
+      <LockScreen
+        onUnlock={unlockAppWithBiometrics}
+        biometricLabel={biometricLabel}
+      />
     );
   }
 

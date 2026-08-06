@@ -13,7 +13,10 @@
       "backgroundColor": "#0B0F19"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Permitir biometria para acessar seu cofre de senhas com segurança."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -32,7 +35,8 @@
     },
     "plugins": [
       "expo-sharing",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-local-authentication"
     ]
   }
 }

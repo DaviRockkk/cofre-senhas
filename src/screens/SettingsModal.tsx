@@ -8,8 +8,9 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  Switch,
 } from 'react-native';
-import { X, Plus, Trash2, RotateCcw, FolderPlus, Download, ShieldCheck, Settings } from 'lucide-react-native';
+import { X, Plus, Trash2, RotateCcw, FolderPlus, Download, ShieldCheck, Settings, Fingerprint } from 'lucide-react-native';
 import { useVault } from '../context/VaultContext';
 import { BackupModal } from './BackupModal';
 
@@ -19,7 +20,16 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
-  const { categories, addCategory, deleteCategory, restoreDefaultCategories } = useVault();
+  const {
+    categories,
+    addCategory,
+    deleteCategory,
+    restoreDefaultCategories,
+    isBiometricSupported,
+    isBiometricEnabled,
+    biometricLabel,
+    toggleBiometricLock,
+  } = useVault();
 
   const [newCategoryName, setNewCategoryName] = useState('');
   const [backupModalVisible, setBackupModalVisible] = useState(false);
@@ -136,13 +146,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                 </TouchableOpacity>
               </View>
 
-              {/* Backup & System Section */}
+              {/* Security & System Section */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Download size={18} color="#06B6D4" style={{ marginRight: 6 }} />
-                  <Text style={styles.sectionTitle}>Backup & Segurança</Text>
+                  <Fingerprint size={18} color="#06B6D4" style={{ marginRight: 6 }} />
+                  <Text style={styles.sectionTitle}>Segurança & Acesso</Text>
                 </View>
 
+                {/* Biometric Toggle Card */}
+                <View style={styles.settingCard}>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text style={styles.settingTitle}>Desbloqueio por Biometria</Text>
+                    <Text style={styles.settingDesc}>
+                      {isBiometricSupported
+                        ? `Exigir ${biometricLabel} para abrir e retornar ao app`
+                        : 'Biometria nativa não disponível no aparelho'}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={isBiometricEnabled}
+                    onValueChange={(val) => {
+                      if (!isBiometricSupported && val) {
+                        Alert.alert('Indisponível', 'Nenhum sensor de biometria ativo foi detectado neste dispositivo.');
+                        return;
+                      }
+                      toggleBiometricLock(val);
+                    }}
+                    disabled={!isBiometricSupported}
+                    trackColor={{ false: '#334155', true: 'rgba(6, 182, 212, 0.4)' }}
+                    thumbColor={isBiometricEnabled ? '#06B6D4' : '#94A3B8'}
+                  />
+                </View>
+
+                {/* Backup Button */}
                 <TouchableOpacity
                   style={styles.backupMenuBtn}
                   onPress={() => setBackupModalVisible(true)}
@@ -274,6 +310,26 @@ const styles = StyleSheet.create({
     color: '#06B6D4',
     fontSize: 13,
     fontWeight: '600',
+  },
+  settingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0B0F19',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    padding: 14,
+  },
+  settingTitle: {
+    color: '#F8FAFC',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  settingDesc: {
+    color: '#94A3B8',
+    fontSize: 12,
+    marginTop: 2,
   },
   backupMenuBtn: {
     flexDirection: 'row',

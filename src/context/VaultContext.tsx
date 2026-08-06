@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, AppState, AppStateStatus } from 'react-native';
 import * as ScreenCapture from 'expo-screen-capture';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
@@ -18,12 +18,25 @@ import {
   saveCredentialItems,
   saveStoredCategories,
 } from '../services/storageService';
+import {
+  checkBiometricAvailability,
+  authenticateWithBiometrics,
+  getBiometricEnabledPreference,
+  setBiometricEnabledPreference,
+} from '../services/biometricService';
 
 interface VaultContextData {
   isLoading: boolean;
+  isLocked: boolean;
+  isBiometricSupported: boolean;
+  isBiometricEnabled: boolean;
+  biometricLabel: string;
   items: CredentialItem[];
   categories: string[];
   clipboardWipeTimer: number | null;
+  
+  unlockAppWithBiometrics: () => Promise<boolean>;
+  toggleBiometricLock: (enabled: boolean) => Promise<void>;
   
   addCredentialItem: (data: {
     serviceName: string;
@@ -71,6 +84,11 @@ export const CLIPBOARD_CLEAR_DELAY_SECONDS = 60; // 60s auto-wipe clipboard (1 m
 
 export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLocked, setIsLocked] = useState<boolean>(true);
+  const [isBiometricSupported, setIsBiometricSupported] = useState<boolean>(false);
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState<boolean>(false);
+  const [biometricLabel, setBiometricLabel] = useState<string>('Biometria');
+
   const [items, setItems] = useState<CredentialItem[]>([]);
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [clipboardWipeTimer, setClipboardWipeTimer] = useState<number | null>(null);
@@ -92,7 +110,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     activateScreenProtection();
   }, []);
 
-  // Load items and categories on launch
+  // Load items, categories, and biometric preferences on launch
   useEffect(() => {
     async function loadVault() {
       setIsLoading(true);
@@ -101,6 +119,21 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const storedCats = await getStoredCategories();
         setItems(storedItems);
         setCategories(storedCats);
+
+        // Check biometric availability and preference
+        const bioStatus = await checkBiometricAvailability();
+        const bioEnabled = await getBiometricEnabledPreference();
+
+        setIsBiometricSupported(bioStatus.isAvailable);
+        setBiometricLabel(bioStatus.label);
+        setIsBiometricEnabled(bioEnabled);
+
+        // Lock app if biometric is supported and enabled
+        if (bioStatus.isAvailable && bioEnabled) {
+          setIsLocked(true);
+        } else {
+          setIsLocked(false);
+        }
       } catch (e) {
         console.error('Error loading vault data:', e);
       } finally {
@@ -109,6 +142,42 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     loadVault();
   }, []);
+
+  // Lock app automatically when app is backgrounded or inactive
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        if (isBiometricSupported && isBiometricEnabled) {
+          setIsLocked(true);
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isBiometricSupported, isBiometricEnabled]);
+
+  const unlockAppWithBiometrics = async (): Promise<boolean> => {
+    if (!isBiometricSupported || !isBiometricEnabled) {
+      setIsLocked(false);
+      return true;
+    }
+    const result = await authenticateWithBiometrics('Autentique com biometria para acessar o Null');
+    if (result.success) {
+      setIsLocked(false);
+      return true;
+    }
+    return false;
+  };
+
+  const toggleBiometricLock = async (enabled: boolean): Promise<void> => {
+    await setBiometricEnabledPreference(enabled);
+    setIsBiometricEnabled(enabled);
+    if (!enabled) {
+      setIsLocked(false);
+    }
+  };
 
   // Category Management
   const addCategory = async (categoryName: string): Promise<boolean> => {
@@ -378,9 +447,15 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <VaultContext.Provider
       value={{
         isLoading,
+        isLocked,
+        isBiometricSupported,
+        isBiometricEnabled,
+        biometricLabel,
         items,
         categories,
         clipboardWipeTimer,
+        unlockAppWithBiometrics,
+        toggleBiometricLock,
         addCredentialItem,
         updateCredentialItem,
         deleteCredentialItem,
