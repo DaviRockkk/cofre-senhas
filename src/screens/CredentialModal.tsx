@@ -73,10 +73,6 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
       Alert.alert('Campo Obrigatório', 'Informe o Nome do Serviço (ex: Nubank).');
       return;
     }
-    if (!username.trim()) {
-      Alert.alert('Campo Obrigatório', 'Informe o Usuário/Login.');
-      return;
-    }
     if (!itemToEdit && !passwordPlain) {
       Alert.alert('Campo Obrigatório', 'Informe a Senha do Acesso.');
       return;
@@ -150,7 +146,7 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
               </View>
 
               {/* Username */}
-              <Text style={styles.label}>Usuário / Email / Login *</Text>
+              <Text style={styles.label}>Usuário / Email / Login (Opcional)</Text>
               <View style={styles.inputWrapper}>
                 <User size={18} color="#94A3B8" style={styles.inputIcon} />
                 <TextInput
@@ -284,6 +280,7 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
       {/* Embedded CSPRNG Generator */}
       <GeneratorModal
         visible={generatorVisible}
+        isNested={true}
         onClose={() => setGeneratorVisible(false)}
         onSelectPassword={(genPassword) => {
           setPasswordPlain(genPassword);

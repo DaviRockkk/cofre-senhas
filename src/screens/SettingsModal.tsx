@@ -161,7 +161,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     <Text style={styles.settingTitle}>Desbloqueio por Biometria</Text>
                     <Text style={styles.settingDesc}>
                       {isBiometricSupported
-                        ? `Exigir ${biometricLabel} para abrir e retornar ao app`
+                        ? `Exigir ${biometricLabel} ao iniciar o app`
                         : 'Biometria nativa não disponível no aparelho'}
                     </Text>
                   </View>

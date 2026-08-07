@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Sparkles, Copy, CheckCircle2, RefreshCw, ShieldCheck } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
+import Slider from '@react-native-community/slider';
 import { PasswordGeneratorConfig, SecurityScore } from '../types';
 import { evaluatePasswordStrength, generateSecurePassword } from '../services/cryptoService';
 
@@ -19,12 +20,14 @@ interface GeneratorModalProps {
   visible: boolean;
   onClose: () => void;
   onSelectPassword?: (password: string) => void;
+  isNested?: boolean;
 }
 
 export const GeneratorModal: React.FC<GeneratorModalProps> = ({
   visible,
   onClose,
   onSelectPassword,
+  isNested = false,
 }) => {
   const insets = useSafeAreaInsets();
   const [config, setConfig] = useState<PasswordGeneratorConfig>({
@@ -40,10 +43,14 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = () => {
-    const pass = generateSecurePassword(config);
-    setGeneratedPassword(pass);
-    setScore(evaluatePasswordStrength(pass));
-    setCopied(false);
+    try {
+      const pass = generateSecurePassword(config);
+      setGeneratedPassword(pass);
+      setScore(evaluatePasswordStrength(pass));
+      setCopied(false);
+    } catch (err) {
+      console.error('Error generating password:', err);
+    }
   };
 
   useEffect(() => {
@@ -67,22 +74,23 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
     }
   };
 
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerTitleRow}>
-              <Sparkles size={20} color="#06B6D4" style={{ marginRight: 8 }} />
-              <Text style={styles.headerTitle}>Gerador de Senha CSPRNG</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <X size={20} color="#94A3B8" />
-            </TouchableOpacity>
-          </View>
+  if (!visible) return null;
 
-          <ScrollView contentContainerStyle={styles.body}>
+  const content = (
+    <View style={isNested ? styles.nestedOverlay : styles.modalOverlay}>
+      <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerTitleRow}>
+            <Sparkles size={20} color="#06B6D4" style={{ marginRight: 8 }} />
+            <Text style={styles.headerTitle}>Gerador de Senha CSPRNG</Text>
+          </View>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <X size={20} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.body}>
             {/* Generated Password Box */}
             <View style={styles.passwordDisplayBox}>
               <Text style={styles.passwordText}>{generatedPassword}</Text>
@@ -107,20 +115,28 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
               </Text>
             </View>
 
-            {/* Length Control */}
-            <Text style={styles.sectionLabel}>Tamanho da Senha: {config.length} caracteres</Text>
-            <View style={styles.lengthChipsRow}>
-              {[12, 16, 20, 24, 32].map((len) => (
-                <TouchableOpacity
-                  key={len}
-                  style={[styles.lengthChip, config.length === len && styles.lengthChipSelected]}
-                  onPress={() => setConfig({ ...config, length: len })}
-                >
-                  <Text style={[styles.lengthChipText, config.length === len && styles.lengthChipTextSelected]}>
-                    {len}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            {/* Length Control Slider */}
+            <View style={styles.sliderHeaderRow}>
+              <Text style={styles.sectionLabel}>Tamanho da Senha</Text>
+              <View style={styles.lengthBadge}>
+                <Text style={styles.lengthBadgeText}>{config.length} caracteres</Text>
+              </View>
+            </View>
+
+            <View style={styles.sliderWrapper}>
+              <Text style={styles.sliderLimitText}>6</Text>
+              <Slider
+                style={styles.slider}
+                minimumValue={6}
+                maximumValue={32}
+                step={1}
+                value={config.length}
+                onValueChange={(val) => setConfig({ ...config, length: Math.round(val) })}
+                minimumTrackTintColor="#06B6D4"
+                maximumTrackTintColor="#1E293B"
+                thumbTintColor="#06B6D4"
+              />
+              <Text style={styles.sliderLimitText}>32</Text>
             </View>
 
             {/* Character Set Toggles */}
@@ -175,11 +191,31 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
           </ScrollView>
         </View>
       </View>
+    );
+
+  if (isNested) {
+    return content;
+  }
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      {content}
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  nestedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'flex-end',
+    zIndex: 9999,
+    elevation: 9999,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
@@ -262,32 +298,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 6,
   },
-  lengthChipsRow: {
+  sliderHeaderRow: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  lengthChip: {
-    flex: 1,
-    height: 38,
-    borderRadius: 8,
-    backgroundColor: '#0B0F19',
-    borderColor: '#334155',
-    borderWidth: 1,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 6,
   },
-  lengthChipSelected: {
-    backgroundColor: '#06B6D4',
+  lengthBadge: {
+    backgroundColor: '#0B0F19',
     borderColor: '#06B6D4',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  lengthChipText: {
-    color: '#94A3B8',
+  lengthBadgeText: {
+    color: '#06B6D4',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  lengthChipTextSelected: {
-    color: '#0F172A',
-    fontWeight: '800',
+  sliderWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0B0F19',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  slider: {
+    flex: 1,
+    height: 40,
+    marginHorizontal: 8,
+  },
+  sliderLimitText: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '700',
   },
   togglesContainer: {
     backgroundColor: '#0B0F19',

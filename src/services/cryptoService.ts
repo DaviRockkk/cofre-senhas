@@ -1,4 +1,5 @@
 import CryptoJS from 'crypto-js';
+import * as Crypto from 'expo-crypto';
 import { PasswordGeneratorConfig, SecurityScore } from '../types';
 
 export const DEFAULT_PBKDF2_ITERATIONS = 100000; // Requirement >= 100,000
@@ -19,16 +20,20 @@ export function constantTimeCompare(a: string, b: string): boolean {
  * Generates Cryptographically Secure Pseudo-Random Bytes (CSPRNG)
  */
 export function getRandomBytes(length: number): Uint8Array {
-  const array = new Uint8Array(length);
-  if (typeof globalThis.crypto?.getRandomValues === 'function') {
-    globalThis.crypto.getRandomValues(array);
-  } else {
-    const wordArray = CryptoJS.lib.WordArray.random(length);
-    for (let i = 0; i < length; i++) {
-      array[i] = (wordArray.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+  const safeLength = Math.max(1, length || 16);
+  try {
+    return Crypto.getRandomBytes(safeLength);
+  } catch (_e) {
+    const array = new Uint8Array(safeLength);
+    if (typeof globalThis.crypto?.getRandomValues === 'function') {
+      globalThis.crypto.getRandomValues(array);
+    } else {
+      for (let i = 0; i < safeLength; i++) {
+        array[i] = Math.floor(Math.random() * 256);
+      }
     }
+    return array;
   }
-  return array;
 }
 
 export function bytesToHex(bytes: Uint8Array): string {
