@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Platform, AppState, AppStateStatus } from 'react-native';
+import { Platform } from 'react-native';
 import * as ScreenCapture from 'expo-screen-capture';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
@@ -142,21 +142,6 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     loadVault();
   }, []);
-
-  // Lock app automatically when app is backgrounded or inactive
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'background' || nextAppState === 'inactive') {
-        if (isBiometricSupported && isBiometricEnabled) {
-          setIsLocked(true);
-        }
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [isBiometricSupported, isBiometricEnabled]);
 
   const unlockAppWithBiometrics = async (): Promise<boolean> => {
     if (!isBiometricSupported || !isBiometricEnabled) {
