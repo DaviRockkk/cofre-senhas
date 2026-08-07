@@ -18,12 +18,14 @@ interface GeneratorModalProps {
   visible: boolean;
   onClose: () => void;
   onSelectPassword?: (password: string) => void;
+  isNested?: boolean;
 }
 
 export const GeneratorModal: React.FC<GeneratorModalProps> = ({
   visible,
   onClose,
   onSelectPassword,
+  isNested = false,
 }) => {
   const [config, setConfig] = useState<PasswordGeneratorConfig>({
     length: 18,
@@ -38,10 +40,14 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = () => {
-    const pass = generateSecurePassword(config);
-    setGeneratedPassword(pass);
-    setScore(evaluatePasswordStrength(pass));
-    setCopied(false);
+    try {
+      const pass = generateSecurePassword(config);
+      setGeneratedPassword(pass);
+      setScore(evaluatePasswordStrength(pass));
+      setCopied(false);
+    } catch (err) {
+      console.error('Error generating password:', err);
+    }
   };
 
   useEffect(() => {
@@ -65,22 +71,23 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
     }
   };
 
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerTitleRow}>
-              <Sparkles size={20} color="#06B6D4" style={{ marginRight: 8 }} />
-              <Text style={styles.headerTitle}>Gerador de Senha CSPRNG</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <X size={20} color="#94A3B8" />
-            </TouchableOpacity>
-          </View>
+  if (!visible) return null;
 
-          <ScrollView contentContainerStyle={styles.body}>
+  const content = (
+    <View style={isNested ? styles.nestedOverlay : styles.modalOverlay}>
+      <View style={styles.modalContainer}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerTitleRow}>
+            <Sparkles size={20} color="#06B6D4" style={{ marginRight: 8 }} />
+            <Text style={styles.headerTitle}>Gerador de Senha CSPRNG</Text>
+          </View>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <X size={20} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.body}>
             {/* Generated Password Box */}
             <View style={styles.passwordDisplayBox}>
               <Text style={styles.passwordText}>{generatedPassword}</Text>
@@ -173,11 +180,27 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
           </ScrollView>
         </View>
       </View>
+    );
+
+  if (isNested) {
+    return content;
+  }
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      {content}
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  nestedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'flex-end',
+    zIndex: 9999,
+    elevation: 9999,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',

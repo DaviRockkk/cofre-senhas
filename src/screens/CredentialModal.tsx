@@ -282,6 +282,7 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
       {/* Embedded CSPRNG Generator */}
       <GeneratorModal
         visible={generatorVisible}
+        isNested={true}
         onClose={() => setGeneratorVisible(false)}
         onSelectPassword={(genPassword) => {
           setPasswordPlain(genPassword);
