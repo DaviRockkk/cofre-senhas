@@ -7,6 +7,7 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Shield, Fingerprint, Lock, AlertCircle, RefreshCw } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -19,6 +20,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
   onUnlock,
   biometricLabel = 'Biometria',
 }) => {
+  const insets = useSafeAreaInsets();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -50,7 +52,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, 24), paddingBottom: Math.max(insets.bottom, 24) }]}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
 
       <View style={styles.card}>

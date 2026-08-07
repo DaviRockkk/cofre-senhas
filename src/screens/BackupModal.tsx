@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,11 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Download, Upload, ShieldCheck, Share2, Copy, Trash2, FileText, FolderOpen, Clipboard as ClipboardIcon } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
 import * as Clipboard from 'expo-clipboard';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
 import { useVault } from '../context/VaultContext';
@@ -25,6 +26,7 @@ interface BackupModalProps {
 }
 
 export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) => {
+  const insets = useSafeAreaInsets();
   const { exportVaultBackup, importVaultBackup, wipeEntireVault } = useVault();
 
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
@@ -36,42 +38,44 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
   const [importText, setImportText] = useState('');
   const [isImporting, setIsImporting] = useState(false);
 
-  const handleGenerateBackup = async () => {
+  const handleGenerateBackup = async (): Promise<string | null> => {
+    if (backupJSON) return backupJSON;
     setIsExporting(true);
     const json = await exportVaultBackup();
     setIsExporting(false);
     if (json) {
       setBackupJSON(json);
-      try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
+      return json;
     } else {
       Alert.alert('Erro', 'Não foi possível gerar o backup.');
+      return null;
     }
   };
 
+  useEffect(() => {
+    if (visible && activeTab === 'export' && !backupJSON) {
+      handleGenerateBackup();
+    }
+  }, [visible, activeTab]);
+
   // Share file to WhatsApp, Google Drive, Files, etc.
   const handleShareFile = async () => {
-    let jsonContent = backupJSON;
-    if (!jsonContent) {
-      setIsExporting(true);
-      jsonContent = await exportVaultBackup();
-      setIsExporting(false);
-      if (jsonContent) setBackupJSON(jsonContent);
-    }
+    const jsonContent = await handleGenerateBackup();
     if (!jsonContent) return;
 
     try {
       const filename = `Null_Backup_${new Date().toISOString().slice(0, 10)}.json`;
-      const baseDir = (FileSystem as any).cacheDirectory || (FileSystem as any).Paths?.cache?.uri || '';
+      const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory || '';
       const fileUri = `${baseDir}${filename}`;
       
       await FileSystem.writeAsStringAsync(fileUri, jsonContent, {
-        encoding: (FileSystem as any).EncodingType?.UTF8 || 'utf8',
+        encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
       });
 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/json',
-          dialogTitle: 'Enviar / Salvar Backup (Google Drive, WhatsApp, etc.)',
+          dialogTitle: 'Enviar / Salvar Backup',
           UTI: 'public.json',
         });
       } else {
@@ -85,13 +89,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
 
   // Copy raw JSON text to clipboard
   const handleCopyJSON = async () => {
-    let jsonContent = backupJSON;
-    if (!jsonContent) {
-      setIsExporting(true);
-      jsonContent = await exportVaultBackup();
-      setIsExporting(false);
-      if (jsonContent) setBackupJSON(jsonContent);
-    }
+    const jsonContent = await handleGenerateBackup();
     if (!jsonContent) return;
 
     await Clipboard.setStringAsync(jsonContent);
@@ -110,13 +108,25 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const fileUri = result.assets[0].uri;
-        const fileContent = await FileSystem.readAsStringAsync(fileUri, {
-          encoding: (FileSystem as any).EncodingType?.UTF8 || 'utf8',
-        });
+        let fileContent = '';
+
+        try {
+          fileContent = await FileSystem.readAsStringAsync(fileUri, {
+            encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
+          });
+        } catch (readErr) {
+          console.warn('readAsStringAsync falhou, tentando fallback com fetch:', readErr);
+          const response = await fetch(fileUri);
+          fileContent = await response.text();
+        }
+
+        if (!fileContent) {
+          throw new Error('Conteúdo do arquivo veio vazio.');
+        }
         
         setImportText(fileContent);
         try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
-        Alert.alert('Arquivo Selecionado', `Arquivo "${result.assets[0].name}" carregado. Clique em "Validar e Restaurar" para concluir.`);
+        Alert.alert('Arquivo Selecionado', `Arquivo "${result.assets[0].name}" carregado com sucesso. Clique em "Validar e Restaurar" para concluir.`);
       }
     } catch (err) {
       console.error('Erro ao escolher arquivo:', err);
@@ -178,7 +188,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Backup & Restauração Offline</Text>

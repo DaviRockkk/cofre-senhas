@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet, StatusBar, Text } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Shield } from 'lucide-react-native';
 import { VaultProvider, useVault } from './src/context/VaultContext';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -40,9 +41,11 @@ const VaultMainNavigator: React.FC = () => {
 
 export default function App() {
   return (
-    <VaultProvider>
-      <VaultMainNavigator />
-    </VaultProvider>
+    <SafeAreaProvider>
+      <VaultProvider>
+        <VaultMainNavigator />
+      </VaultProvider>
+    </SafeAreaProvider>
   );
 }
 

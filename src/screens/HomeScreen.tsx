@@ -9,6 +9,7 @@ import {
   Alert,
   StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Shield,
   Search,
@@ -34,6 +35,7 @@ import { DecryptPromptModal } from './DecryptPromptModal';
 import { SettingsModal } from './SettingsModal';
 
 export const HomeScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const {
     items,
     categories,
@@ -116,7 +118,7 @@ export const HomeScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
 
       {/* Top Header Bar */}
-      <View style={styles.topHeader}>
+      <View style={[styles.topHeader, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
         <View style={styles.titleContainer}>
           <Shield size={24} color="#06B6D4" style={{ marginRight: 8 }} />
           <Text style={styles.appTitle}>Null</Text>
@@ -189,7 +191,7 @@ export const HomeScreen: React.FC = () => {
       <FlatList
         data={filteredItems}
         keyExtractor={(item: CredentialItem) => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: 100 + insets.bottom }]}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <ShieldCheck size={56} color="#1E293B" style={{ marginBottom: 12 }} />
@@ -280,7 +282,7 @@ export const HomeScreen: React.FC = () => {
       />
 
       {/* Bottom Floating Bar */}
-      <View style={styles.floatingBar}>
+      <View style={[styles.floatingBar, { bottom: Math.max(insets.bottom, 16) + 8 }]}>
         <TouchableOpacity
           style={styles.generatorFab}
           onPress={() => setGeneratorVisible(true)}

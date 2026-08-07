@@ -8,6 +8,7 @@ import {
   Switch,
   ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Sparkles, Copy, CheckCircle2, RefreshCw, ShieldCheck } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
@@ -25,6 +26,7 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
   onClose,
   onSelectPassword,
 }) => {
+  const insets = useSafeAreaInsets();
   const [config, setConfig] = useState<PasswordGeneratorConfig>({
     length: 18,
     includeUppercase: true,
@@ -68,7 +70,7 @@ export const GeneratorModal: React.FC<GeneratorModalProps> = ({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>

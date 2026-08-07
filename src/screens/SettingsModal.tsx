@@ -10,6 +10,7 @@ import {
   Alert,
   Switch,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Plus, Trash2, RotateCcw, FolderPlus, Download, ShieldCheck, Settings, Fingerprint } from 'lucide-react-native';
 import { useVault } from '../context/VaultContext';
 import { BackupModal } from './BackupModal';
@@ -20,6 +21,7 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
+  const insets = useSafeAreaInsets();
   const {
     categories,
     addCategory,
@@ -86,7 +88,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
     <>
       <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerTitleRow}>

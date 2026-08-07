@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Sparkles, Eye, EyeOff, Lock, User, Globe2, Key } from 'lucide-react-native';
 import { Category, CredentialItem } from '../types';
 import { useVault } from '../context/VaultContext';
@@ -25,6 +26,7 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
   itemToEdit,
   onClose,
 }) => {
+  const insets = useSafeAreaInsets();
   const { addCredentialItem, updateCredentialItem, categories } = useVault();
 
   const [serviceName, setServiceName] = useState('');
@@ -122,7 +124,7 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
     <>
       <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.headerTitle}>

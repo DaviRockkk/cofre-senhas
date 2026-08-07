@@ -6,12 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0B0F19"
-    },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -49,7 +43,9 @@
         {
           "faceIDPermission": "Permitir biometria para acessar seu cofre de senhas com segurança."
         }
-      ]
+      ],
+      "expo-sharing",
+      "expo-status-bar"
     ],
     "owner": "davirockkk"
   }
