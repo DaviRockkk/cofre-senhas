@@ -200,7 +200,7 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
                 <Key size={18} color="#06B6D4" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Senha mestre usada para criptografar este item..."
+                  placeholder="Senha Mestre do Acesso..."
                   placeholderTextColor="#64748B"
                   secureTextEntry={!showMasterPassword}
                   value={masterPassword}
