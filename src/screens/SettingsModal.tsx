@@ -188,7 +188,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                   <ShieldCheck size={20} color="#10B981" style={{ marginRight: 10 }} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.backupMenuTitle}>Backup & Restauração Offline</Text>
-                    <Text style={styles.backupMenuDesc}>Exportar ou importar payload AES-256 (JSON)</Text>
+                    <Text style={styles.backupMenuDesc}>Exportar ou importar payload AES-256</Text>
                   </View>
                 </TouchableOpacity>
               </View>

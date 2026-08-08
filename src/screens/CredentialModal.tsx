@@ -195,7 +195,7 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
               </View>
 
               {/* Master Password for this item */}
-              <Text style={styles.label}>Senha Mestre para Criptografar (AES-256) *</Text>
+              <Text style={styles.label}>Senha Mestre para Criptografar *</Text>
               <View style={styles.inputWrapper}>
                 <Key size={18} color="#06B6D4" style={styles.inputIcon} />
                 <TextInput
@@ -269,7 +269,7 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
                 disabled={isSubmitting}
               >
                 <Text style={styles.saveButtonText}>
-                  {itemToEdit ? 'Salvar Alterações' : 'Criptografar (AES-256) e Salvar'}
+                  {itemToEdit ? 'Salvar Alterações' : 'Criptografar e Salvar'}
                 </Text>
               </TouchableOpacity>
             </ScrollView>

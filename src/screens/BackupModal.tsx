@@ -222,7 +222,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
                 <View style={styles.infoBox}>
                   <ShieldCheck size={24} color="#10B981" style={{ marginRight: 10 }} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.infoTitle}>Massa de Dados Criptografada (AES-256)</Text>
+                    <Text style={styles.infoTitle}>Massa de Dados Criptografada</Text>
                     <Text style={styles.infoDesc}>
                       O backup é 100% criptografado. Você pode enviar para o Google Drive, WhatsApp, Email ou salvar nos seus arquivos com total segurança.
                     </Text>
@@ -243,7 +243,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
                     <>
                       <Share2 size={18} color="#0F172A" style={{ marginRight: 8 }} />
                       <Text style={styles.channelButtonPrimaryText}>
-                        Enviar Arquivo .JSON (WhatsApp, Google Drive, etc.)
+                        Enviar Arquivo .JSON
                       </Text>
                     </>
                   )}
@@ -256,13 +256,13 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
                 >
                   <Copy size={18} color="#F8FAFC" style={{ marginRight: 8 }} />
                   <Text style={styles.channelButtonSecondaryText}>
-                    {copiedBackup ? 'Texto Criptografado Copiado!' : 'Copiar Texto do Backup (JSON)'}
+                    {copiedBackup ? 'Texto Criptografado Copiado!' : 'Copiar Texto do Backup'}
                   </Text>
                 </TouchableOpacity>
 
                 {backupJSON && (
                   <View style={styles.exportedContainer}>
-                    <Text style={styles.jsonLabel}>Prévia do Payload Criptografado (SHA-256 Validado):</Text>
+                    <Text style={styles.jsonLabel}>Prévia do Payload Criptografado:</Text>
                     <ScrollView style={styles.jsonBox} nestedScrollEnabled>
                       <Text style={styles.jsonText}>{backupJSON}</Text>
                     </ScrollView>
@@ -276,7 +276,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.infoTitle, { color: '#06B6D4' }]}>Restaurar Acessos</Text>
                     <Text style={styles.infoDesc}>
-                      Escolha um arquivo de backup (.json) do seu dispositivo/Google Drive ou cole o texto criptografado.
+                      Escolha um arquivo de backup .json do seu dispositivo/Google Drive ou cole o texto criptografado.
                     </Text>
                   </View>
                 </View>
@@ -290,7 +290,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
                 >
                   <FolderOpen size={18} color="#0F172A" style={{ marginRight: 8 }} />
                   <Text style={styles.channelButtonPrimaryText}>
-                    Buscar Arquivo .JSON (Google Drive, WhatsApp, Arquivos)
+                    Buscar Arquivo .JSON
                   </Text>
                 </TouchableOpacity>
 

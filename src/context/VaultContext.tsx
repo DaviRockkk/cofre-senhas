@@ -24,6 +24,14 @@ import {
   getBiometricEnabledPreference,
   setBiometricEnabledPreference,
 } from '../services/biometricService';
+import { CryptoProgressModal } from '../components/CryptoProgressModal';
+
+interface CryptoProgressState {
+  visible: boolean;
+  title?: string;
+  message?: string;
+  mode?: 'encrypt' | 'decrypt' | 'backup';
+}
 
 interface VaultContextData {
   isLoading: boolean;
@@ -34,7 +42,11 @@ interface VaultContextData {
   items: CredentialItem[];
   categories: string[];
   clipboardWipeTimer: number | null;
+  cryptoProgressState: CryptoProgressState;
   
+  showCryptoProgress: (title?: string, message?: string, mode?: 'encrypt' | 'decrypt' | 'backup') => void;
+  hideCryptoProgress: () => void;
+
   unlockAppWithBiometrics: () => Promise<boolean>;
   toggleBiometricLock: (enabled: boolean) => Promise<void>;
   
@@ -92,9 +104,42 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [items, setItems] = useState<CredentialItem[]>([]);
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [clipboardWipeTimer, setClipboardWipeTimer] = useState<number | null>(null);
+
+  const [cryptoProgressState, setCryptoProgressState] = useState<CryptoProgressState>({
+    visible: false,
+  });
   
   const clipboardTimerRef = useRef<any>(null);
   const clipboardCountdownRef = useRef<any>(null);
+
+  const showCryptoProgress = (title?: string, message?: string, mode?: 'encrypt' | 'decrypt' | 'backup') => {
+    setCryptoProgressState({ visible: true, title, message, mode });
+  };
+
+  const hideCryptoProgress = () => {
+    setCryptoProgressState({ visible: false });
+  };
+
+  const runWithCryptoProgress = async <T,>(
+    config: { title?: string; message?: string; mode?: 'encrypt' | 'decrypt' | 'backup' },
+    action: () => Promise<T>
+  ): Promise<T> => {
+    setCryptoProgressState({
+      visible: true,
+      title: config.title,
+      message: config.message,
+      mode: config.mode,
+    });
+
+    // Pause briefly (60ms) so React Native paints the progress modal on UI before CPU work starts
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    try {
+      return await action();
+    } finally {
+      setCryptoProgressState({ visible: false });
+    }
+  };
 
   // Enable screen capture protection (FLAG_SECURE) on mobile platforms
   useEffect(() => {
@@ -214,36 +259,45 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     url?: string;
     notes?: string;
   }): Promise<boolean> => {
-    try {
-      const encrypted = await encryptCredentialPassword(data.passwordPlain, data.masterPassword);
-      
-      const newItem: CredentialItem = {
-        id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
-        serviceName: data.serviceName.trim(),
-        username: data.username.trim(),
-        ciphertext: encrypted.ciphertext,
-        iv: encrypted.iv,
-        authTag: encrypted.authTag,
-        salt: encrypted.salt,
-        iterations: encrypted.iterations,
-        category: data.category,
-        url: data.url?.trim(),
-        notes: data.notes?.trim(),
-        isFavorite: false,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
+    return runWithCryptoProgress(
+      {
+        title: 'Criptografando Novo Acesso...',
+        message: 'Derivando chave PBKDF2 (100.000 iterações) e aplicando cifra AES-256-GCM...',
+        mode: 'encrypt',
+      },
+      async () => {
+        try {
+          const encrypted = await encryptCredentialPassword(data.passwordPlain, data.masterPassword);
+          
+          const newItem: CredentialItem = {
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
+            serviceName: data.serviceName.trim(),
+            username: data.username.trim(),
+            ciphertext: encrypted.ciphertext,
+            iv: encrypted.iv,
+            authTag: encrypted.authTag,
+            salt: encrypted.salt,
+            iterations: encrypted.iterations,
+            category: data.category,
+            url: data.url?.trim(),
+            notes: data.notes?.trim(),
+            isFavorite: false,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
 
-      const updatedList = [newItem, ...items];
-      await saveCredentialItems(updatedList);
-      setItems(updatedList);
-      
-      try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch (_) {}
-      return true;
-    } catch (err) {
-      console.error('Error adding item:', err);
-      return false;
-    }
+          const updatedList = [newItem, ...items];
+          await saveCredentialItems(updatedList);
+          setItems(updatedList);
+          
+          try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch (_) {}
+          return true;
+        } catch (err) {
+          console.error('Error adding item:', err);
+          return false;
+        }
+      }
+    );
   };
 
   // Update item
@@ -260,54 +314,68 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isFavorite?: boolean;
     }
   ): Promise<boolean> => {
-    try {
-      const targetIndex = items.findIndex(i => i.id === id);
-      if (targetIndex === -1) return false;
+    const executeUpdate = async () => {
+      try {
+        const targetIndex = items.findIndex(i => i.id === id);
+        if (targetIndex === -1) return false;
 
-      const existing = items[targetIndex];
-      let ciphertext = existing.ciphertext;
-      let iv = existing.iv;
-      let authTag = existing.authTag;
-      let salt = existing.salt;
-      let iterations = existing.iterations;
+        const existing = items[targetIndex];
+        let ciphertext = existing.ciphertext;
+        let iv = existing.iv;
+        let authTag = existing.authTag;
+        let salt = existing.salt;
+        let iterations = existing.iterations;
 
-      if (data.passwordPlain && data.masterPassword) {
-        const encrypted = await encryptCredentialPassword(data.passwordPlain, data.masterPassword);
-        ciphertext = encrypted.ciphertext;
-        iv = encrypted.iv;
-        authTag = encrypted.authTag;
-        salt = encrypted.salt;
-        iterations = encrypted.iterations;
+        if (data.passwordPlain && data.masterPassword) {
+          const encrypted = await encryptCredentialPassword(data.passwordPlain, data.masterPassword);
+          ciphertext = encrypted.ciphertext;
+          iv = encrypted.iv;
+          authTag = encrypted.authTag;
+          salt = encrypted.salt;
+          iterations = encrypted.iterations;
+        }
+
+        const updatedItem: CredentialItem = {
+          ...existing,
+          serviceName: data.serviceName.trim(),
+          username: data.username.trim(),
+          ciphertext,
+          iv,
+          authTag,
+          salt,
+          iterations,
+          category: data.category,
+          url: data.url?.trim(),
+          notes: data.notes?.trim(),
+          isFavorite: data.isFavorite !== undefined ? data.isFavorite : existing.isFavorite,
+          updatedAt: Date.now(),
+        };
+
+        const updatedList = [...items];
+        updatedList[targetIndex] = updatedItem;
+
+        await saveCredentialItems(updatedList);
+        setItems(updatedList);
+        
+        try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch (_) {}
+        return true;
+      } catch (err) {
+        console.error('Error updating item:', err);
+        return false;
       }
+    };
 
-      const updatedItem: CredentialItem = {
-        ...existing,
-        serviceName: data.serviceName.trim(),
-        username: data.username.trim(),
-        ciphertext,
-        iv,
-        authTag,
-        salt,
-        iterations,
-        category: data.category,
-        url: data.url?.trim(),
-        notes: data.notes?.trim(),
-        isFavorite: data.isFavorite !== undefined ? data.isFavorite : existing.isFavorite,
-        updatedAt: Date.now(),
-      };
-
-      const updatedList = [...items];
-      updatedList[targetIndex] = updatedItem;
-
-      await saveCredentialItems(updatedList);
-      setItems(updatedList);
-      
-      try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch (_) {}
-      return true;
-    } catch (err) {
-      console.error('Error updating item:', err);
-      return false;
+    if (data.passwordPlain && data.masterPassword) {
+      return runWithCryptoProgress(
+        {
+          title: 'Atualizando Criptografia...',
+          message: 'Derivando nova chave PBKDF2 e recriptografando com AES-256...',
+          mode: 'encrypt',
+        },
+        executeUpdate
+      );
     }
+    return executeUpdate();
   };
 
   // Delete item
@@ -325,23 +393,32 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     id: string,
     masterPassword: string
   ): Promise<{ success: boolean; password?: string; error?: string }> => {
-    const item = items.find(i => i.id === id);
-    if (!item) return { success: false, error: 'Acesso não encontrado.' };
+    return runWithCryptoProgress(
+      {
+        title: 'Descriptografando Acesso...',
+        message: 'Derivando chave PBKDF2 e verificando tag de autenticidade MAC...',
+        mode: 'decrypt',
+      },
+      async () => {
+        const item = items.find(i => i.id === id);
+        if (!item) return { success: false, error: 'Acesso não encontrado.' };
 
-    try {
-      const decrypted = await decryptCredentialPassword(
-        item.ciphertext,
-        item.iv,
-        item.authTag,
-        item.salt,
-        item.iterations,
-        masterPassword
-      );
+        try {
+          const decrypted = await decryptCredentialPassword(
+            item.ciphertext,
+            item.iv,
+            item.authTag,
+            item.salt,
+            item.iterations,
+            masterPassword
+          );
 
-      return { success: true, password: decrypted };
-    } catch (err: any) {
-      return { success: false, error: 'Senha Mestre incorreta. Não foi possível descriptografar.' };
-    }
+          return { success: true, password: decrypted };
+        } catch (err: any) {
+          return { success: false, error: 'Senha Mestre incorreta. Não foi possível descriptografar.' };
+        }
+      }
+    );
   };
 
   // Copy password with 60-second auto-clear timer
@@ -385,27 +462,45 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Backup & Restore
   const exportVaultBackup = async (): Promise<string | null> => {
-    return await createEncryptedBackupJSON();
+    return runWithCryptoProgress(
+      {
+        title: 'Exportando Cofre Criptografado...',
+        message: 'Criptografando cofre completo para exportação segura...',
+        mode: 'backup',
+      },
+      async () => {
+        return await createEncryptedBackupJSON();
+      }
+    );
   };
 
   const importVaultBackup = async (
     jsonContent: string
   ): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const restored = await restoreEncryptedBackupJSON(jsonContent);
-      await saveCredentialItems(restored.items);
-      setItems(restored.items);
+    return runWithCryptoProgress(
+      {
+        title: 'Restaurando Backup...',
+        message: 'Descriptografando arquivo e restaurando acessos do cofre...',
+        mode: 'backup',
+      },
+      async () => {
+        try {
+          const restored = await restoreEncryptedBackupJSON(jsonContent);
+          await saveCredentialItems(restored.items);
+          setItems(restored.items);
 
-      if (restored.categories && restored.categories.length > 0) {
-        await saveStoredCategories(restored.categories);
-        setCategories(restored.categories);
+          if (restored.categories && restored.categories.length > 0) {
+            await saveStoredCategories(restored.categories);
+            setCategories(restored.categories);
+          }
+
+          try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
+          return { success: true };
+        } catch (err: any) {
+          return { success: false, error: err.message || 'Erro ao restaurar o backup.' };
+        }
       }
-
-      try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Erro ao restaurar o backup.' };
-    }
+    );
   };
 
   const wipeEntireVault = async (): Promise<void> => {
@@ -439,6 +534,9 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         items,
         categories,
         clipboardWipeTimer,
+        cryptoProgressState,
+        showCryptoProgress,
+        hideCryptoProgress,
         unlockAppWithBiometrics,
         toggleBiometricLock,
         addCredentialItem,
@@ -456,8 +554,14 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }}
     >
       {children}
+      <CryptoProgressModal
+        visible={cryptoProgressState.visible}
+        title={cryptoProgressState.title}
+        message={cryptoProgressState.message}
+        mode={cryptoProgressState.mode}
+      />
     </VaultContext.Provider>
   );
 };
 
-export const useVault = () => useContext(VaultContext);
+export const useVault = () => useContext(VaultContext);
