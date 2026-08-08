@@ -14,6 +14,7 @@ export interface CryptoProgressModalProps {
   title?: string;
   message?: string;
   mode?: 'encrypt' | 'decrypt' | 'backup';
+  progress?: number | null;
 }
 
 export const CryptoProgressModal: React.FC<CryptoProgressModalProps> = ({
@@ -21,6 +22,7 @@ export const CryptoProgressModal: React.FC<CryptoProgressModalProps> = ({
   title,
   message,
   mode = 'encrypt',
+  progress = null,
 }) => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
@@ -60,21 +62,26 @@ export const CryptoProgressModal: React.FC<CryptoProgressModalProps> = ({
       );
       pulseAnimation.start();
 
-      // Progress bar fill animation simulation
-      progressAnim.setValue(0);
-      Animated.timing(progressAnim, {
-        toValue: 1,
-        duration: 1500,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }).start();
-
       return () => {
         rotateAnimation.stop();
         pulseAnimation.stop();
       };
     }
   }, [visible]);
+
+  // Update progress bar animation when numeric progress updates
+  useEffect(() => {
+    if (progress !== null && progress !== undefined) {
+      Animated.timing(progressAnim, {
+        toValue: Math.min(1, Math.max(0, progress)),
+        duration: 120,
+        easing: Easing.linear,
+        useNativeDriver: false,
+      }).start();
+    } else if (visible) {
+      progressAnim.setValue(0);
+    }
+  }, [progress, visible]);
 
   const spin = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -83,7 +90,7 @@ export const CryptoProgressModal: React.FC<CryptoProgressModalProps> = ({
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['15%', '95%'],
+    outputRange: ['3%', '100%'],
   });
 
   if (!visible) return null;
@@ -104,6 +111,10 @@ export const CryptoProgressModal: React.FC<CryptoProgressModalProps> = ({
 
   const displayTitle = title || defaultTitle;
   const displayMessage = message || defaultMessage;
+  const percentText =
+    progress !== null && progress !== undefined
+      ? `${Math.min(100, Math.round(progress * 100))}%`
+      : null;
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
@@ -137,6 +148,10 @@ export const CryptoProgressModal: React.FC<CryptoProgressModalProps> = ({
               ]}
             />
           </View>
+
+          {percentText ? (
+            <Text style={styles.progressPercentText}>{percentText}</Text>
+          ) : null}
 
           {/* High-Tech Security Indicators */}
           <View style={styles.badgeRow}>
@@ -227,6 +242,14 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#06B6D4',
     borderRadius: 3,
+  },
+  progressPercentText: {
+    color: '#06B6D4',
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: -10,
+    marginBottom: 14,
+    fontFamily: 'monospace',
   },
   badgeRow: {
     flexDirection: 'row',

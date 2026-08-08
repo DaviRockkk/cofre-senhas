@@ -31,6 +31,7 @@ interface CryptoProgressState {
   title?: string;
   message?: string;
   mode?: 'encrypt' | 'decrypt' | 'backup';
+  progress?: number | null;
 }
 
 interface VaultContextData {
@@ -107,37 +108,44 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [cryptoProgressState, setCryptoProgressState] = useState<CryptoProgressState>({
     visible: false,
+    progress: null,
   });
   
   const clipboardTimerRef = useRef<any>(null);
   const clipboardCountdownRef = useRef<any>(null);
 
   const showCryptoProgress = (title?: string, message?: string, mode?: 'encrypt' | 'decrypt' | 'backup') => {
-    setCryptoProgressState({ visible: true, title, message, mode });
+    setCryptoProgressState({ visible: true, title, message, mode, progress: null });
   };
 
   const hideCryptoProgress = () => {
-    setCryptoProgressState({ visible: false });
+    setCryptoProgressState({ visible: false, progress: null });
   };
 
   const runWithCryptoProgress = async <T,>(
     config: { title?: string; message?: string; mode?: 'encrypt' | 'decrypt' | 'backup' },
-    action: () => Promise<T>
+    action: (onProgress: (progress: number) => void) => Promise<T>
   ): Promise<T> => {
     setCryptoProgressState({
       visible: true,
       title: config.title,
       message: config.message,
       mode: config.mode,
+      progress: 0,
     });
 
     // Pause briefly (60ms) so React Native paints the progress modal on UI before CPU work starts
     await new Promise((resolve) => setTimeout(resolve, 60));
 
     try {
-      return await action();
+      return await action((progress: number) => {
+        setCryptoProgressState((prev) => ({
+          ...prev,
+          progress,
+        }));
+      });
     } finally {
-      setCryptoProgressState({ visible: false });
+      setCryptoProgressState({ visible: false, progress: null });
     }
   };
 
@@ -265,9 +273,9 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         message: 'Derivando chave PBKDF2 (100.000 iterações) e aplicando cifra AES-256-GCM...',
         mode: 'encrypt',
       },
-      async () => {
+      async (onProgress) => {
         try {
-          const encrypted = await encryptCredentialPassword(data.passwordPlain, data.masterPassword);
+          const encrypted = await encryptCredentialPassword(data.passwordPlain, data.masterPassword, onProgress);
           
           const newItem: CredentialItem = {
             id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
@@ -314,7 +322,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isFavorite?: boolean;
     }
   ): Promise<boolean> => {
-    const executeUpdate = async () => {
+    const executeUpdate = async (onProgress?: (p: number) => void) => {
       try {
         const targetIndex = items.findIndex(i => i.id === id);
         if (targetIndex === -1) return false;
@@ -327,7 +335,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         let iterations = existing.iterations;
 
         if (data.passwordPlain && data.masterPassword) {
-          const encrypted = await encryptCredentialPassword(data.passwordPlain, data.masterPassword);
+          const encrypted = await encryptCredentialPassword(data.passwordPlain, data.masterPassword, onProgress);
           ciphertext = encrypted.ciphertext;
           iv = encrypted.iv;
           authTag = encrypted.authTag;
@@ -372,7 +380,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           message: 'Derivando nova chave PBKDF2 e recriptografando com AES-256...',
           mode: 'encrypt',
         },
-        executeUpdate
+        async (onProgress) => executeUpdate(onProgress)
       );
     }
     return executeUpdate();
@@ -399,7 +407,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         message: 'Derivando chave PBKDF2 e verificando tag de autenticidade MAC...',
         mode: 'decrypt',
       },
-      async () => {
+      async (onProgress) => {
         const item = items.find(i => i.id === id);
         if (!item) return { success: false, error: 'Acesso não encontrado.' };
 
@@ -410,7 +418,8 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             item.authTag,
             item.salt,
             item.iterations,
-            masterPassword
+            masterPassword,
+            onProgress
           );
 
           return { success: true, password: decrypted };
@@ -559,6 +568,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         title={cryptoProgressState.title}
         message={cryptoProgressState.message}
         mode={cryptoProgressState.mode}
+        progress={cryptoProgressState.progress}
       />
     </VaultContext.Provider>
   );

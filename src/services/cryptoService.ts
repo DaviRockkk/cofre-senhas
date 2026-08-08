@@ -80,11 +80,51 @@ export function deriveKeyPBKDF2(masterPassword: string, saltHex: string, iterati
 }
 
 /**
+ * Derives a 256-bit Key from Master Password using PBKDF2 progressively in chunks,
+ * yielding to the JS event loop so UI can animate real progress from 0% to 100%.
+ */
+export async function deriveKeyPBKDF2Progressive(
+  masterPassword: string,
+  saltHex: string,
+  iterations: number = DEFAULT_PBKDF2_ITERATIONS,
+  onProgress?: (progress: number) => void
+): Promise<string> {
+  const saltWordArray = CryptoJS.enc.Hex.parse(saltHex);
+  const blockIndexWordArray = CryptoJS.enc.Hex.parse('00000001');
+  const initialInput = saltWordArray.clone().concat(blockIndexWordArray);
+  
+  let U = CryptoJS.HmacSHA256(initialInput, masterPassword);
+  const T_words = [...U.words];
+  let U_prev = U;
+
+  const chunkSize = 3500; // ~3500 iterations per chunk (~15-20ms per chunk on JS thread)
+  for (let iter = 2; iter <= iterations; iter++) {
+    const U_curr = CryptoJS.HmacSHA256(U_prev, masterPassword);
+    for (let k = 0; k < T_words.length; k++) {
+      T_words[k] ^= U_curr.words[k];
+    }
+    U_prev = U_curr;
+
+    if (iter % chunkSize === 0 || iter === iterations) {
+      if (onProgress) {
+        onProgress(iter / iterations);
+      }
+      // Yield execution to JS event loop
+      await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+
+  const resultWordArray = CryptoJS.lib.WordArray.create(T_words, 32);
+  return resultWordArray.toString(CryptoJS.enc.Hex);
+}
+
+/**
  * Encrypts a password with AES-256-GCM using a per-access Master Password
  */
 export async function encryptCredentialPassword(
   plainPassword: string,
-  masterPassword: string
+  masterPassword: string,
+  onProgress?: (progress: number) => void
 ): Promise<{
   ciphertext: string;
   iv: string;
@@ -96,7 +136,7 @@ export async function encryptCredentialPassword(
   const saltHex = bytesToHex(saltBytes);
   const iterations = DEFAULT_PBKDF2_ITERATIONS;
 
-  const keyHex = deriveKeyPBKDF2(masterPassword, saltHex, iterations);
+  const keyHex = await deriveKeyPBKDF2Progressive(masterPassword, saltHex, iterations, onProgress);
   const ivBytes = getRandomBytes(12); // Standard 96-bit GCM IV
   const keyBytes = hexToBytes(keyHex);
 
@@ -170,9 +210,10 @@ export async function decryptCredentialPassword(
   authTagBase64: string,
   saltHex: string,
   iterations: number,
-  masterPassword: string
+  masterPassword: string,
+  onProgress?: (progress: number) => void
 ): Promise<string> {
-  const keyHex = deriveKeyPBKDF2(masterPassword, saltHex, iterations);
+  const keyHex = await deriveKeyPBKDF2Progressive(masterPassword, saltHex, iterations, onProgress);
   const ivBytes = base64ToBytes(ivBase64);
   const keyBytes = hexToBytes(keyHex);
   const ciphertextBytes = base64ToBytes(ciphertextBase64);
