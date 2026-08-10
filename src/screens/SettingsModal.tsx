@@ -9,9 +9,25 @@ import {
   ScrollView,
   Alert,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Plus, Trash2, RotateCcw, FolderPlus, Download, ShieldCheck, Settings, Fingerprint } from 'lucide-react-native';
+import {
+  X,
+  Plus,
+  Trash2,
+  RotateCcw,
+  FolderPlus,
+  Download,
+  ShieldCheck,
+  Settings,
+  Fingerprint,
+  Info,
+  RefreshCw,
+  CheckCircle2,
+} from 'lucide-react-native';
+import * as Updates from 'expo-updates';
+import Constants from 'expo-constants';
 import { useVault } from '../context/VaultContext';
 import { BackupModal } from './BackupModal';
 
@@ -35,6 +51,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
   const [newCategoryName, setNewCategoryName] = useState('');
   const [backupModalVisible, setBackupModalVisible] = useState(false);
+
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [newUpdateMessage, setNewUpdateMessage] = useState<string | null>(null);
+
+  const currentVersion = Constants.expoConfig?.version ?? '1.0.0';
+  const currentChannel = Updates.channel ?? 'preview';
+  const currentUpdateMessage = (Updates.manifest as any)?.message ?? 'Versão inicial (APK Base)';
+
+  const handleCheckForUpdates = async () => {
+    setCheckingUpdates(true);
+    try {
+      if (__DEV__) {
+        Alert.alert('Modo Desenvolvedor', 'A verificação de atualizações OTA (EAS Update) está desativada no ambiente de desenvolvimento.');
+        setCheckingUpdates(false);
+        return;
+      }
+
+      const update = await Updates.checkForUpdateAsync();
+
+      if (update.isAvailable) {
+        const fetched = await Updates.fetchUpdateAsync();
+        const message = (fetched.manifest as any)?.message || 'Nova atualização baixada com sucesso!';
+        setNewUpdateMessage(message);
+        setUpdateAvailable(true);
+        Alert.alert(
+          '🎉 Nova Atualização Baixada!',
+          `O que há de novo:\n\n${message}\n\nClique no botão "Reiniciar e Aplicar" para usar a nova versão.`
+        );
+      } else {
+        Alert.alert('Você já está atualizado', 'Nenhuma nova atualização encontrada para este aplicativo.');
+      }
+    } catch (error: any) {
+      Alert.alert('Erro ao buscar atualização', error.message || 'Não foi possível conectar ao servidor de atualizações.');
+    } finally {
+      setCheckingUpdates(false);
+    }
+  };
+
+  const handleApplyUpdate = async () => {
+    try {
+      await Updates.reloadAsync();
+    } catch (error: any) {
+      Alert.alert('Erro ao reiniciar', error.message || 'Não foi possível reiniciar o aplicativo.');
+    }
+  };
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -191,6 +253,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     <Text style={styles.backupMenuDesc}>Exportar ou importar payload AES-256</Text>
                   </View>
                 </TouchableOpacity>
+              </View>
+
+              {/* Sobre & Atualizações Section */}
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Info size={18} color="#06B6D4" style={{ marginRight: 6 }} />
+                  <Text style={styles.sectionTitle}>Sobre & Atualizações</Text>
+                </View>
+
+                <View style={styles.updateCard}>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Versão do App:</Text>
+                    <Text style={styles.infoValue}>v{currentVersion} ({currentChannel})</Text>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Update Ativo:</Text>
+                    <Text style={styles.infoMessage} numberOfLines={2}>
+                      {currentUpdateMessage}
+                    </Text>
+                  </View>
+
+                  {updateAvailable && (
+                    <View style={styles.newUpdateBox}>
+                      <CheckCircle2 size={16} color="#10B981" style={{ marginRight: 6 }} />
+                      <Text style={styles.newUpdateText}>
+                        Nova versão pronta: {newUpdateMessage}
+                      </Text>
+                    </View>
+                  )}
+
+                  {updateAvailable ? (
+                    <TouchableOpacity style={styles.applyUpdateBtn} onPress={handleApplyUpdate}>
+                      <Download size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.applyUpdateBtnText}>Reiniciar e Aplicar Atualização</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.checkUpdateBtn}
+                      onPress={handleCheckForUpdates}
+                      disabled={checkingUpdates}
+                    >
+                      {checkingUpdates ? (
+                        <ActivityIndicator size="small" color="#06B6D4" />
+                      ) : (
+                        <>
+                          <RefreshCw size={16} color="#06B6D4" style={{ marginRight: 8 }} />
+                          <Text style={styles.checkUpdateBtnText}>Buscar Atualizações</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </ScrollView>
           </View>
@@ -351,5 +466,79 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 12,
     marginTop: 2,
+  },
+  updateCard: {
+    backgroundColor: '#0B0F19',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    padding: 14,
+    gap: 10,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  infoLabel: {
+    color: '#94A3B8',
+    fontSize: 13,
+  },
+  infoValue: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  infoMessage: {
+    color: '#06B6D4',
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 12,
+  },
+  newUpdateBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderWidth: 1,
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  newUpdateText: {
+    color: '#10B981',
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  checkUpdateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E293B',
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  checkUpdateBtnText: {
+    color: '#06B6D4',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  applyUpdateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10B981',
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  applyUpdateBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
