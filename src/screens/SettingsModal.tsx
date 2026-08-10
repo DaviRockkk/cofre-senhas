@@ -28,6 +28,7 @@ import {
 } from 'lucide-react-native';
 import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
+import packageJson from '../../package.json';
 import { useVault } from '../context/VaultContext';
 import { BackupModal } from './BackupModal';
 
@@ -56,15 +57,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [newUpdateMessage, setNewUpdateMessage] = useState<string | null>(null);
 
-  const currentVersion = Constants.expoConfig?.version ?? '1.0.0';
-  const currentChannel = Updates.channel ?? 'preview';
-  const currentUpdateMessage = (Updates.manifest as any)?.message ?? 'Versão inicial (APK Base)';
+  const currentVersion = packageJson.version;
+  const channelTag = Updates.channel ? ` (${Updates.channel})` : '';
+  const currentUpdateMessage = (Updates.manifest as any)?.message || 'Nenhuma nota de versão.';
 
   const handleCheckForUpdates = async () => {
     setCheckingUpdates(true);
     try {
       if (__DEV__) {
-        Alert.alert('Modo Desenvolvedor', 'A verificação de atualizações OTA (EAS Update) está desativada no ambiente de desenvolvimento.');
+        Alert.alert('Modo Desenvolvedor', 'A verificação de atualizações está desativada no ambiente de desenvolvimento.');
         setCheckingUpdates(false);
         return;
       }
@@ -265,7 +266,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                 <View style={styles.updateCard}>
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Versão do App:</Text>
-                    <Text style={styles.infoValue}>v{currentVersion} ({currentChannel})</Text>
+                    <Text style={styles.infoValue}>v{currentVersion}{channelTag}</Text>
                   </View>
 
                   <View style={styles.infoRow}>
