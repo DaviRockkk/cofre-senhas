@@ -9,8 +9,10 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Permitir biometria para acessar seu cofre de senhas com segurança."
-      }
+        "NSFaceIDUsageDescription": "Permitir biometria para acessar seu cofre de senhas com segurança.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.davirockkk.cofresenhas"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,9 +31,7 @@
     "updates": {
       "url": "https://u.expo.dev/bdc1f50f-3b62-4eb8-abb7-9d5ea792bc6c"
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.5.0",
     "extra": {
       "eas": {
         "projectId": "bdc1f50f-3b62-4eb8-abb7-9d5ea792bc6c"
