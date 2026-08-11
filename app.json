@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cofre de Senhas",
     "slug": "null",
-    "version": "1.5.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -31,13 +31,14 @@
     "updates": {
       "url": "https://u.expo.dev/bdc1f50f-3b62-4eb8-abb7-9d5ea792bc6c"
     },
-    "runtimeVersion": "1.5.0",
+    "runtimeVersion": "2.0.0",
     "extra": {
       "eas": {
         "projectId": "bdc1f50f-3b62-4eb8-abb7-9d5ea792bc6c"
       }
     },
     "plugins": [
+      "expo-updates",
       [
         "expo-local-authentication",
         {
