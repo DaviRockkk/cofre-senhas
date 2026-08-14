@@ -46,7 +46,11 @@ export async function clearVaultData(): Promise<void> {
  */
 export async function createEncryptedBackupJSON(): Promise<string | null> {
   const items = await getCredentialItems();
-  const categories = await getStoredCategories();
+  const storedCategories = await getStoredCategories();
+  const itemCategories = items.map((i) => i.category).filter(Boolean);
+  const categories = Array.from(
+    new Set([...DEFAULT_CATEGORIES, ...storedCategories, ...itemCategories])
+  );
 
   const backupObject: Omit<BackupData, 'checksum'> = {
     appName: 'Null',
@@ -70,7 +74,7 @@ export async function createEncryptedBackupJSON(): Promise<string | null> {
 /**
  * Validates and restores an offline encrypted backup JSON object
  */
-export async function restoreEncryptedBackupJSON(jsonContent: string): Promise<{ items: CredentialItem[]; categories?: string[] }> {
+export async function restoreEncryptedBackupJSON(jsonContent: string): Promise<{ items: CredentialItem[]; categories: string[] }> {
   let parsed: BackupData;
   try {
     parsed = JSON.parse(jsonContent);
@@ -89,8 +93,14 @@ export async function restoreEncryptedBackupJSON(jsonContent: string): Promise<{
     throw new Error('INTEGRIDADE_VIOLADA: O hash SHA-256 do arquivo de backup não confere.');
   }
 
+  const restoredCategories = parsed.categories || [];
+  const itemCategories = parsed.items.map((i) => i.category).filter(Boolean);
+  const categories = Array.from(
+    new Set([...DEFAULT_CATEGORIES, ...restoredCategories, ...itemCategories])
+  );
+
   return {
     items: parsed.items,
-    categories: parsed.categories,
+    categories,
   };
 }

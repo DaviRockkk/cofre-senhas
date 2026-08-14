@@ -49,7 +49,7 @@ interface VaultContextData {
   hideCryptoProgress: () => void;
 
   unlockAppWithBiometrics: () => Promise<boolean>;
-  toggleBiometricLock: (enabled: boolean) => Promise<void>;
+  toggleBiometricLock: (enabled: boolean) => Promise<boolean>;
   
   addCredentialItem: (data: {
     serviceName: string;
@@ -79,6 +79,7 @@ interface VaultContextData {
   
   decryptPassword: (id: string, masterPassword: string) => Promise<{ success: boolean; password?: string; error?: string }>;
   copyPasswordToClipboard: (id: string, masterPassword: string) => Promise<{ success: boolean; error?: string }>;
+  copyPlainPasswordToClipboard: (passwordText: string) => Promise<boolean>;
   
   addCategory: (categoryName: string) => Promise<boolean>;
   deleteCategory: (categoryName: string) => Promise<boolean>;
@@ -209,12 +210,22 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return false;
   };
 
-  const toggleBiometricLock = async (enabled: boolean): Promise<void> => {
+  const toggleBiometricLock = async (enabled: boolean): Promise<boolean> => {
+    if (!enabled && isBiometricEnabled) {
+      const authResult = await authenticateWithBiometrics(
+        'Autentique com biometria para desativar a proteção biométrica'
+      );
+      if (!authResult.success) {
+        return false;
+      }
+    }
+
     await setBiometricEnabledPreference(enabled);
     setIsBiometricEnabled(enabled);
     if (!enabled) {
       setIsLocked(false);
     }
+    return true;
   };
 
   // Category Management
@@ -430,17 +441,11 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
   };
 
-  // Copy password with 60-second auto-clear timer
-  const copyPasswordToClipboard = async (
-    id: string,
-    masterPassword: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    const res = await decryptPassword(id, masterPassword);
-    if (!res.success || !res.password) {
-      return { success: false, error: res.error || 'Falha na descriptografia.' };
-    }
-
-    await Clipboard.setStringAsync(res.password);
+  // Copy plain text password directly with 60-second auto-clear timer
+  const copyPlainPasswordToClipboard = async (
+    passwordText: string
+  ): Promise<boolean> => {
+    await Clipboard.setStringAsync(passwordText);
     try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch (_) {}
 
     if (clipboardTimerRef.current) clearTimeout(clipboardTimerRef.current);
@@ -466,6 +471,20 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setClipboardWipeTimer(null);
     }, CLIPBOARD_CLEAR_DELAY_SECONDS * 1000);
 
+    return true;
+  };
+
+  // Copy password with 60-second auto-clear timer
+  const copyPasswordToClipboard = async (
+    id: string,
+    masterPassword: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const res = await decryptPassword(id, masterPassword);
+    if (!res.success || !res.password) {
+      return { success: false, error: res.error || 'Falha na descriptografia.' };
+    }
+
+    await copyPlainPasswordToClipboard(res.password);
     return { success: true };
   };
 
@@ -553,6 +572,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteCredentialItem,
         decryptPassword,
         copyPasswordToClipboard,
+        copyPlainPasswordToClipboard,
         addCategory,
         deleteCategory,
         restoreDefaultCategories,

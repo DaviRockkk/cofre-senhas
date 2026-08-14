@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Download, Upload, ShieldCheck, Share2, Copy, Trash2, FileText, FolderOpen, Clipboard as ClipboardIcon } from 'lucide-react-native';
+import { X, Download, Upload, ShieldCheck, Share2, Copy, Trash2, FileText, FolderOpen, Clipboard as ClipboardIcon, Folder } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -27,7 +27,7 @@ interface BackupModalProps {
 
 export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) => {
   const insets = useSafeAreaInsets();
-  const { exportVaultBackup, importVaultBackup, wipeEntireVault } = useVault();
+  const { items, categories, exportVaultBackup, importVaultBackup, wipeEntireVault } = useVault();
 
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
   const [backupJSON, setBackupJSON] = useState<string | null>(null);
@@ -224,8 +224,33 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.infoTitle}>Massa de Dados Criptografada</Text>
                     <Text style={styles.infoDesc}>
-                      O backup é 100% criptografado. Você pode enviar para o Google Drive, WhatsApp, Email ou salvar nos seus arquivos com total segurança.
+                      O backup é 100% criptografado e inclui todos os seus acessos e categorias criadas. Salve com total segurança.
                     </Text>
+                  </View>
+                </View>
+
+                {/* Summary Card with Items & Categories Included */}
+                <View style={styles.summaryCard}>
+                  <View style={styles.summaryRow}>
+                    <View style={styles.summaryStatItem}>
+                      <Text style={styles.statNumber}>{items.length}</Text>
+                      <Text style={styles.statLabel}>Acessos</Text>
+                    </View>
+                    <View style={styles.summaryDivider} />
+                    <View style={styles.summaryStatItem}>
+                      <Text style={styles.statNumber}>{categories.length}</Text>
+                      <Text style={styles.statLabel}>Categorias</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.categoriesTitle}>Categorias inclusas no arquivo:</Text>
+                  <View style={styles.categoryChipsContainer}>
+                    {categories.map((cat) => (
+                      <View key={cat} style={styles.categoryBadge}>
+                        <Folder size={11} color="#06B6D4" style={{ marginRight: 4 }} />
+                        <Text style={styles.categoryBadgeText}>{cat}</Text>
+                      </View>
+                    ))}
                   </View>
                 </View>
 
@@ -274,9 +299,9 @@ export const BackupModal: React.FC<BackupModalProps> = ({ visible, onClose }) =>
                 <View style={styles.infoBox}>
                   <ShieldCheck size={24} color="#06B6D4" style={{ marginRight: 10 }} />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.infoTitle, { color: '#06B6D4' }]}>Restaurar Acessos</Text>
+                    <Text style={[styles.infoTitle, { color: '#06B6D4' }]}>Restaurar Acessos e Categorias</Text>
                     <Text style={styles.infoDesc}>
-                      Escolha um arquivo de backup .json do seu dispositivo/Google Drive ou cole o texto criptografado.
+                      Escolha um arquivo de backup .json ou cole o texto do backup. Os acessos e todas as categorias salvas serão restaurados.
                     </Text>
                   </View>
                 </View>
@@ -561,6 +586,65 @@ const styles = StyleSheet.create({
   dangerButtonText: {
     color: '#EF4444',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  summaryCard: {
+    backgroundColor: '#0B0F19',
+    borderRadius: 12,
+    borderColor: '#1E293B',
+    borderWidth: 1,
+    padding: 12,
+    gap: 10,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 4,
+  },
+  summaryStatItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#1E293B',
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#06B6D4',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  categoriesTitle: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  categoryChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#151D2A',
+    borderColor: 'rgba(6, 182, 212, 0.3)',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    color: '#CBD5E1',
+    fontSize: 10,
     fontWeight: '600',
   },
 });

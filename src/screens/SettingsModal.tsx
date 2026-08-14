@@ -230,12 +230,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                   </View>
                   <Switch
                     value={isBiometricEnabled}
-                    onValueChange={(val) => {
+                    onValueChange={async (val) => {
                       if (!isBiometricSupported && val) {
                         Alert.alert('Indisponível', 'Nenhum sensor de biometria ativo foi detectado neste dispositivo.');
                         return;
                       }
-                      toggleBiometricLock(val);
+                      await toggleBiometricLock(val);
                     }}
                     disabled={!isBiometricSupported}
                     trackColor={{ false: '#334155', true: 'rgba(6, 182, 212, 0.4)' }}

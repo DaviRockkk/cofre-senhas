@@ -23,7 +23,7 @@ export const DecryptPromptModal: React.FC<DecryptPromptModalProps> = ({
   item,
   onClose,
 }) => {
-  const { decryptPassword, copyPasswordToClipboard } = useVault();
+  const { decryptPassword, copyPasswordToClipboard, copyPlainPasswordToClipboard } = useVault();
 
   const [masterPassword, setMasterPassword] = useState('');
   const [showMasterPassword, setShowMasterPassword] = useState(false);
@@ -196,12 +196,14 @@ export const DecryptPromptModal: React.FC<DecryptPromptModalProps> = ({
                 <Text style={styles.revealedPassword}>{decryptedPassword}</Text>
                 
                 <TouchableOpacity style={styles.copyDirectButton} onPress={async () => {
-                  await copyPasswordToClipboard(item.id, masterPassword);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
+                  if (decryptedPassword) {
+                    await copyPlainPasswordToClipboard(decryptedPassword);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }
                 }}>
                   {copied ? <CheckCircle2 size={18} color="#0F172A" /> : <Copy size={18} color="#0F172A" />}
-                  <Text style={styles.copyDirectText}>{copied ? 'Senha Copiada! (Timer de 30s ativo)' : 'Copiar para Área de Transferência'}</Text>
+                  <Text style={styles.copyDirectText}>{copied ? 'Senha Copiada! (Timer de 60s ativo)' : 'Copiar para Área de Transferência'}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.closeViewBtn} onPress={handleClose}>
