@@ -25,6 +25,8 @@ import {
   Info,
   RefreshCw,
   CheckCircle2,
+  Sparkles,
+  AlertTriangle,
 } from 'lucide-react-native';
 import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
@@ -36,6 +38,46 @@ interface SettingsModalProps {
   visible: boolean;
   onClose: () => void;
 }
+
+interface CustomAlertState {
+  visible: boolean;
+  title: string;
+  message: string;
+  notes?: string | null;
+  type?: 'success' | 'info' | 'warning' | 'error';
+  isUpdateReady?: boolean;
+}
+
+const getManifestMessage = (manifestObj: any): string | null => {
+  if (!manifestObj) return null;
+
+  if (typeof manifestObj.message === 'string' && manifestObj.message.trim()) {
+    return manifestObj.message.trim();
+  }
+  if (typeof manifestObj.metadata?.message === 'string' && manifestObj.metadata.message.trim()) {
+    return manifestObj.metadata.message.trim();
+  }
+  if (typeof manifestObj.extra?.message === 'string' && manifestObj.extra.message.trim()) {
+    return manifestObj.extra.message.trim();
+  }
+  if (typeof manifestObj.extra?.eas?.message === 'string' && manifestObj.extra.eas.message.trim()) {
+    return manifestObj.extra.eas.message.trim();
+  }
+  if (
+    typeof manifestObj.extra?.expoClient?.extra?.eas?.message === 'string' &&
+    manifestObj.extra.expoClient.extra.eas.message.trim()
+  ) {
+    return manifestObj.extra.expoClient.extra.eas.message.trim();
+  }
+  if (
+    typeof manifestObj.extra?.expoClient?.description === 'string' &&
+    manifestObj.extra.expoClient.description.trim()
+  ) {
+    return manifestObj.extra.expoClient.description.trim();
+  }
+
+  return null;
+};
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
   const insets = useSafeAreaInsets();
@@ -57,15 +99,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [newUpdateMessage, setNewUpdateMessage] = useState<string | null>(null);
 
+  const [customAlert, setCustomAlert] = useState<CustomAlertState>({
+    visible: false,
+    title: '',
+    message: '',
+  });
+
   const currentVersion = packageJson.version;
   const channelTag = Updates.channel ? ` (${Updates.channel})` : '';
-  const currentUpdateMessage = (Updates.manifest as any)?.message || 'Nenhuma nota de versão.';
+
+  const currentManifest = (Updates.manifest as any);
+  const currentUpdateMessage = getManifestMessage(currentManifest) || 'Versão estável atualizada.';
 
   const handleCheckForUpdates = async () => {
     setCheckingUpdates(true);
     try {
       if (__DEV__) {
-        Alert.alert('Modo Desenvolvedor', 'A verificação de atualizações está desativada no ambiente de desenvolvimento.');
+        setCustomAlert({
+          visible: true,
+          title: 'Modo Desenvolvedor',
+          message: 'A verificação de atualizações está desativada no ambiente de desenvolvimento.',
+          type: 'info',
+        });
         setCheckingUpdates(false);
         return;
       }
@@ -74,18 +129,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
       if (update.isAvailable) {
         const fetched = await Updates.fetchUpdateAsync();
-        const message = (fetched.manifest as any)?.message || 'Nova atualização baixada com sucesso!';
+        const fetchedManifest = fetched?.manifest || (fetched as any)?.manifest || (update as any)?.manifest;
+        const message = getManifestMessage(fetchedManifest) || 'Nova atualização baixada com sucesso!';
         setNewUpdateMessage(message);
         setUpdateAvailable(true);
-        Alert.alert(
-          '🎉 Nova Atualização Baixada!',
-          `O que há de novo:\n\n${message}\n\nClique no botão "Reiniciar e Aplicar" para usar a nova versão.`
-        );
+
+        setCustomAlert({
+          visible: true,
+          title: '🎉 Nova Atualização Pronta!',
+          message: 'Uma nova versão do Null foi baixada e está pronta para ser aplicada.',
+          notes: message,
+          isUpdateReady: true,
+          type: 'success',
+        });
       } else {
-        Alert.alert('Você já está atualizado', 'Nenhuma nova atualização encontrada para este aplicativo.');
+        setCustomAlert({
+          visible: true,
+          title: 'Você já está atualizado',
+          message: 'Nenhuma nova atualização encontrada para este aplicativo no momento.',
+          type: 'info',
+        });
       }
     } catch (error: any) {
-      Alert.alert('Erro ao buscar atualização', error.message || 'Não foi possível conectar ao servidor de atualizações.');
+      setCustomAlert({
+        visible: true,
+        title: 'Erro ao buscar atualização',
+        message: error.message || 'Não foi possível conectar ao servidor de atualizações.',
+        type: 'error',
+      });
     } finally {
       setCheckingUpdates(false);
     }
@@ -95,7 +166,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
     try {
       await Updates.reloadAsync();
     } catch (error: any) {
-      Alert.alert('Erro ao reiniciar', error.message || 'Não foi possível reiniciar o aplicativo.');
+      setCustomAlert({
+        visible: true,
+        title: 'Erro ao reiniciar',
+        message: error.message || 'Não foi possível reiniciar o aplicativo.',
+        type: 'error',
+      });
     }
   };
 
@@ -269,11 +345,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     <Text style={styles.infoValue}>v{currentVersion}{channelTag}</Text>
                   </View>
 
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Update Ativo:</Text>
-                    <Text style={styles.infoMessage} numberOfLines={2}>
-                      {currentUpdateMessage}
-                    </Text>
+                  <View style={styles.versionNotesCard}>
+                    <Text style={styles.versionNotesHeader}>NOTAS DA VERSÃO ATIVA:</Text>
+                    <Text style={styles.versionNotesContent}>{currentUpdateMessage}</Text>
                   </View>
 
                   {updateAvailable && (
@@ -317,6 +391,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
         visible={backupModalVisible}
         onClose={() => setBackupModalVisible(false)}
       />
+
+      {/* Custom Dark Alert Modal for Updates & System Notifications */}
+      <Modal
+        visible={customAlert.visible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setCustomAlert({ ...customAlert, visible: false })}
+      >
+        <View style={styles.alertOverlay}>
+          <View style={styles.alertCard}>
+            <View
+              style={[
+                styles.alertIconCircle,
+                customAlert.type === 'error'
+                  ? { backgroundColor: 'rgba(239, 68, 68, 0.15)' }
+                  : customAlert.type === 'success' || customAlert.isUpdateReady
+                  ? { backgroundColor: 'rgba(16, 185, 129, 0.15)' }
+                  : { backgroundColor: 'rgba(6, 182, 212, 0.15)' },
+              ]}
+            >
+              {customAlert.type === 'error' ? (
+                <AlertTriangle size={28} color="#EF4444" />
+              ) : customAlert.isUpdateReady || customAlert.type === 'success' ? (
+                <Sparkles size={28} color="#10B981" />
+              ) : (
+                <Info size={28} color="#06B6D4" />
+              )}
+            </View>
+
+            <Text style={styles.alertTitle}>{customAlert.title}</Text>
+            <Text style={styles.alertMessage}>{customAlert.message}</Text>
+
+            {customAlert.notes ? (
+              <View style={styles.alertNotesBox}>
+                <Text style={styles.alertNotesLabel}>O QUE HÁ DE NOVO:</Text>
+                <ScrollView style={{ maxHeight: 120 }} nestedScrollEnabled>
+                  <Text style={styles.alertNotesText}>{customAlert.notes}</Text>
+                </ScrollView>
+              </View>
+            ) : null}
+
+            <View style={styles.alertActionsRow}>
+              {customAlert.isUpdateReady ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.alertSecondaryBtn}
+                    onPress={() => setCustomAlert({ ...customAlert, visible: false })}
+                  >
+                    <Text style={styles.alertSecondaryBtnText}>Mais Tarde</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.alertPrimaryBtnSuccess}
+                    onPress={() => {
+                      setCustomAlert({ ...customAlert, visible: false });
+                      handleApplyUpdate();
+                    }}
+                  >
+                    <Download size={16} color="#0F172A" style={{ marginRight: 6 }} />
+                    <Text style={styles.alertPrimaryBtnSuccessText}>Reiniciar e Aplicar</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={styles.alertPrimaryBtnInfo}
+                  onPress={() => setCustomAlert({ ...customAlert, visible: false })}
+                >
+                  <Text style={styles.alertPrimaryBtnInfoText}>Entendido</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 };
@@ -540,6 +688,131 @@ const styles = StyleSheet.create({
   applyUpdateBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '700',
+  },
+  versionNotesCard: {
+    backgroundColor: '#151D2A',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    padding: 10,
+    marginTop: 2,
+  },
+  versionNotesHeader: {
+    color: '#06B6D4',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  versionNotesContent: {
+    color: '#CBD5E1',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  alertCard: {
+    width: '100%',
+    backgroundColor: '#151D2A',
+    borderRadius: 20,
+    borderColor: '#1E293B',
+    borderWidth: 1,
+    padding: 20,
+    alignItems: 'center',
+  },
+  alertIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  alertTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#F8FAFC',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  alertMessage: {
+    fontSize: 13,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  alertNotesBox: {
+    width: '100%',
+    backgroundColor: '#0B0F19',
+    borderRadius: 10,
+    borderColor: 'rgba(6, 182, 212, 0.3)',
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 16,
+  },
+  alertNotesLabel: {
+    color: '#06B6D4',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  alertNotesText: {
+    color: '#F8FAFC',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  alertActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+    marginTop: 4,
+  },
+  alertSecondaryBtn: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#1E293B',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alertSecondaryBtnText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  alertPrimaryBtnSuccess: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#10B981',
+    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alertPrimaryBtnSuccessText: {
+    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  alertPrimaryBtnInfo: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#06B6D4',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alertPrimaryBtnInfoText: {
+    color: '#0F172A',
+    fontSize: 14,
     fontWeight: '700',
   },
 });
