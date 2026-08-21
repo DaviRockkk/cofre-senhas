@@ -43,41 +43,9 @@ interface CustomAlertState {
   visible: boolean;
   title: string;
   message: string;
-  notes?: string | null;
   type?: 'success' | 'info' | 'warning' | 'error';
   isUpdateReady?: boolean;
 }
-
-const getManifestMessage = (manifestObj: any): string | null => {
-  if (!manifestObj) return null;
-
-  if (typeof manifestObj.message === 'string' && manifestObj.message.trim()) {
-    return manifestObj.message.trim();
-  }
-  if (typeof manifestObj.metadata?.message === 'string' && manifestObj.metadata.message.trim()) {
-    return manifestObj.metadata.message.trim();
-  }
-  if (typeof manifestObj.extra?.message === 'string' && manifestObj.extra.message.trim()) {
-    return manifestObj.extra.message.trim();
-  }
-  if (typeof manifestObj.extra?.eas?.message === 'string' && manifestObj.extra.eas.message.trim()) {
-    return manifestObj.extra.eas.message.trim();
-  }
-  if (
-    typeof manifestObj.extra?.expoClient?.extra?.eas?.message === 'string' &&
-    manifestObj.extra.expoClient.extra.eas.message.trim()
-  ) {
-    return manifestObj.extra.expoClient.extra.eas.message.trim();
-  }
-  if (
-    typeof manifestObj.extra?.expoClient?.description === 'string' &&
-    manifestObj.extra.expoClient.description.trim()
-  ) {
-    return manifestObj.extra.expoClient.description.trim();
-  }
-
-  return null;
-};
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
   const insets = useSafeAreaInsets();
@@ -97,7 +65,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
   const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [newUpdateMessage, setNewUpdateMessage] = useState<string | null>(null);
 
   const [customAlert, setCustomAlert] = useState<CustomAlertState>({
     visible: false,
@@ -107,9 +74,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
   const currentVersion = packageJson.version;
   const channelTag = Updates.channel ? ` (${Updates.channel})` : '';
-
-  const currentManifest = (Updates.manifest as any);
-  const currentUpdateMessage = getManifestMessage(currentManifest) || 'Versão estável atualizada.';
 
   const handleCheckForUpdates = async () => {
     setCheckingUpdates(true);
@@ -128,33 +92,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
       const update = await Updates.checkForUpdateAsync();
 
       if (update.isAvailable) {
-        const fetched = await Updates.fetchUpdateAsync();
-        const fetchedManifest = fetched?.manifest || (fetched as any)?.manifest || (update as any)?.manifest;
-        const message = getManifestMessage(fetchedManifest) || 'Nova atualização baixada com sucesso!';
-        setNewUpdateMessage(message);
+        await Updates.fetchUpdateAsync();
         setUpdateAvailable(true);
 
         setCustomAlert({
           visible: true,
-          title: '🎉 Nova Atualização Pronta!',
-          message: 'Uma nova versão do Null foi baixada e está pronta para ser aplicada.',
-          notes: message,
+          title: 'Atualização Disponível',
+          message: 'Uma nova versão foi baixada e está pronta para ser aplicada.',
           isUpdateReady: true,
           type: 'success',
         });
       } else {
         setCustomAlert({
           visible: true,
-          title: 'Você já está atualizado',
-          message: 'Nenhuma nova atualização encontrada para este aplicativo no momento.',
+          title: 'Aplicativo Atualizado',
+          message: 'Nenhuma nova atualização disponível no momento.',
           type: 'info',
         });
       }
     } catch (error: any) {
       setCustomAlert({
         visible: true,
-        title: 'Erro ao buscar atualização',
-        message: error.message || 'Não foi possível conectar ao servidor de atualizações.',
+        title: 'Erro na Atualização',
+        message: error.message || 'Não foi possível buscar atualizações.',
         type: 'error',
       });
     } finally {
@@ -168,7 +128,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
     } catch (error: any) {
       setCustomAlert({
         visible: true,
-        title: 'Erro ao reiniciar',
+        title: 'Erro ao Reiniciar',
         message: error.message || 'Não foi possível reiniciar o aplicativo.',
         type: 'error',
       });
@@ -345,16 +305,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     <Text style={styles.infoValue}>v{currentVersion}{channelTag}</Text>
                   </View>
 
-                  <View style={styles.versionNotesCard}>
-                    <Text style={styles.versionNotesHeader}>NOTAS DA VERSÃO ATIVA:</Text>
-                    <Text style={styles.versionNotesContent}>{currentUpdateMessage}</Text>
-                  </View>
-
                   {updateAvailable && (
                     <View style={styles.newUpdateBox}>
                       <CheckCircle2 size={16} color="#10B981" style={{ marginRight: 6 }} />
                       <Text style={styles.newUpdateText}>
-                        Nova versão pronta: {newUpdateMessage}
+                        Nova versão pronta para instalação.
                       </Text>
                     </View>
                   )}
@@ -422,15 +377,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
             <Text style={styles.alertTitle}>{customAlert.title}</Text>
             <Text style={styles.alertMessage}>{customAlert.message}</Text>
-
-            {customAlert.notes ? (
-              <View style={styles.alertNotesBox}>
-                <Text style={styles.alertNotesLabel}>O QUE HÁ DE NOVO:</Text>
-                <ScrollView style={{ maxHeight: 120 }} nestedScrollEnabled>
-                  <Text style={styles.alertNotesText}>{customAlert.notes}</Text>
-                </ScrollView>
-              </View>
-            ) : null}
 
             <View style={styles.alertActionsRow}>
               {customAlert.isUpdateReady ? (
@@ -690,26 +636,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  versionNotesCard: {
-    backgroundColor: '#151D2A',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    padding: 10,
-    marginTop: 2,
-  },
-  versionNotesHeader: {
-    color: '#06B6D4',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  versionNotesContent: {
-    color: '#CBD5E1',
-    fontSize: 12,
-    lineHeight: 16,
-  },
   alertOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -746,28 +672,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 16,
-  },
-  alertNotesBox: {
-    width: '100%',
-    backgroundColor: '#0B0F19',
-    borderRadius: 10,
-    borderColor: 'rgba(6, 182, 212, 0.3)',
-    borderWidth: 1,
-    padding: 12,
-    marginBottom: 16,
-  },
-  alertNotesLabel: {
-    color: '#06B6D4',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginBottom: 6,
-  },
-  alertNotesText: {
-    color: '#F8FAFC',
-    fontSize: 12,
-    lineHeight: 18,
+    marginBottom: 20,
   },
   alertActionsRow: {
     flexDirection: 'row',

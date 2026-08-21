@@ -117,8 +117,7 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
   };
 
   return (
-    <>
-      <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
             {/* Header */}
@@ -274,20 +273,19 @@ export const CredentialModal: React.FC<CredentialModalProps> = ({
               </TouchableOpacity>
             </ScrollView>
           </View>
+
+          {/* Embedded CSPRNG Generator */}
+          <GeneratorModal
+            visible={generatorVisible}
+            isNested={true}
+            onClose={() => setGeneratorVisible(false)}
+            onSelectPassword={(genPassword) => {
+              setPasswordPlain(genPassword);
+              setShowPassword(true);
+            }}
+          />
         </View>
       </Modal>
-
-      {/* Embedded CSPRNG Generator */}
-      <GeneratorModal
-        visible={generatorVisible}
-        isNested={true}
-        onClose={() => setGeneratorVisible(false)}
-        onSelectPassword={(genPassword) => {
-          setPasswordPlain(genPassword);
-          setShowPassword(true);
-        }}
-      />
-    </>
   );
 };
 
